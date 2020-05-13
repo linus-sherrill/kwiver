@@ -24,8 +24,11 @@ class KWIVER_PROCESSES_NO_EXPORT serializer_process
 {
 public:
   PLUGIN_INFO( "serializer",
-               "Serializes data types to byte streams. "
-               "Input and output ports are dynamically created based on connection." )
+               "Serializes data types to byte streams.\n\n"
+               "Input and output ports are dynamically created based on connection. "
+               "Input data elements are martialed using a specified encoding format and "
+               "grouped as a message. This message is usually sent to a transport process."
+    )
 
   serializer_process( kwiver::vital::config_block_sptr const& config );
   virtual ~serializer_process();

@@ -73,11 +73,6 @@ category_hierarchy
   }
 }
 
-category_hierarchy
-::~category_hierarchy()
-{
-}
-
 // -----------------------------------------------------------------------------
 void
 category_hierarchy
@@ -250,8 +245,8 @@ category_hierarchy
     std::vector< label_t > tokens;
     std::istringstream iss( line );
     std::copy( std::istream_iterator< std::string >( iss ),
-      std::istream_iterator< std::string >(),
-      std::back_inserter( tokens ) );
+               std::istream_iterator< std::string >(),
+               std::back_inserter( tokens ) );
 
     if( tokens.size() == 0 || tokens[0].size() == 0 || tokens[0][0] == '#' )
     {
@@ -278,6 +273,7 @@ category_hierarchy
 
   for( auto rel : relationships )
   {
+    // add child, parent relationship
     this->add_relationship( rel.first, rel.second );
   }
 }
