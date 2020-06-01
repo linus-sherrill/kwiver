@@ -51,7 +51,30 @@
 namespace kwiver {
 namespace vital {
 
-// ----------------------------------------------------------------
+class plugin_manager;
+
+// ============================================================================
+/** @brief Custom context for the plugin manager.
+ *
+ * This class is the custom context for this plugin manager. It allows
+ * plugins to locate the plugin manager, which is not otherwise
+ * accessible.
+ */
+class vpm_context
+  : public plugin_loader_context
+{
+public:
+  vpm_context( plugin_manager* vpm )
+    : m_vpm { vpm }
+  {}
+
+  plugin_manager* get_vpm() { return m_vpm; }
+
+private:
+  plugin_manager* m_vpm;
+};
+
+// ============================================================================
 /**
  * @brief Vital plugin manager.
  *
@@ -249,7 +272,6 @@ public:
   void add_path_from_environment( std::string env_var);
 
 protected:
-
   plugin_loader* get_loader();
 
   /**
@@ -289,7 +311,6 @@ protected:
    * @return vector of paths that are searched
    */
   path_list_t const& search_path() const;
-
 
   plugin_manager();
   ~plugin_manager();

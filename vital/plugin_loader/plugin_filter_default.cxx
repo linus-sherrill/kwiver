@@ -35,6 +35,8 @@
 #include <vital/exceptions/plugin.h>
 #include <vital/util/demangle.h>
 
+#include <iostream>
+
 namespace kwiver {
 namespace vital {
 
@@ -75,14 +77,17 @@ plugin_filter_default
   std::string new_name;
   fact->get_attribute( plugin_factory::PLUGIN_NAME, new_name );
 
-  auto plugin_map = m_loader->get_plugin_map();
-  auto fact_list = plugin_map[interface_type];
+  auto const& plugin_map = m_loader->get_plugin_map();
+  if ( plugin_map.count(interface_type) < 1 )
+  {
+    return true; // allow if interface type not present
+  }
+
+  auto const& fact_list = plugin_map.at(interface_type); // get vector
 
   // Make sure factory is not already in the list.
   // Check the two types and name as a signature.
-  if ( fact_list.size() > 0)
-  {
-    for( auto const afact : fact_list )
+    for( auto const& afact : fact_list )
     {
       std::string interf;
       afact->get_attribute( plugin_factory::INTERFACE_TYPE, interf );
@@ -109,9 +114,67 @@ plugin_filter_default
         VITAL_THROW( plugin_already_exists, str.str() );
       }
     } // end foreach
+
+return true;
+}
+
+// ----------------------------------------------------------------------------
+bool
+plugin_filter_default
+::load_plugin( path_t const& path,
+               DL::LibraryHandle lib_handle ) const
+{
+  std::cout << "Looking for symbol 'KV_set_VPM_instance__' in " << path << "\n";
+  DL::SymbolPointer fp =
+    DL::GetSymbolAddress( lib_handle, "KV_set_VPM_instance__" );
+  if ( 0 != fp )
+  {
+  typedef plugin_manager* (* reg_fp_t)( plugin_manager* );
+
+  reg_fp_t reg_fp = reinterpret_cast< reg_fp_t > ( fp );
+
+  auto* old_vpm = ( *reg_fp )( m_vpm );
+  std::cout << "Loading: " << path << "   Updated pointer. Received: " << old_vpm
+            << "   Set: " << m_vpm
+            << "  Func addr: " << fp
+            << std::endl;
   }
 
+#if 0 //+ temp
+  std::cout << "default filter - load_plugin()\n"
+            << "Fixup count: " << m_fixups.size() << std::endl;
+  for ( auto& entry : m_fixups)
+  {
+    std::cout << "Looking for symbol '" << entry.first << "' in : " << path << std::endl; //+ TEMP
+    DL::SymbolPointer fp =
+      DL::GetSymbolAddress( lib_handle, entry.first );
+    if ( 0 != fp ) // skip fixup of symbol not found
+    {
+      // cast to a pointer and update value
+      auto* fixup_ptr = reinterpret_cast<void **>(fp);
+
+      std::cout << "Found sym: setting to: " << entry.second << std::endl
+                << "  old value: " << *fixup_ptr << std::endl;
+
+      *fixup_ptr = entry.second;
+    }
+    else
+    {
+      std::cout << "Symbol '" << entry.first << "' not found\n";
+    }
+  } // end for
+#endif
+
   return true;
+}
+
+// ----------------------------------------------------------------------------
+void
+plugin_filter_default
+::add_fixup( std::string const& sym, void* ptr )
+{
+  std::cout << "Adding fixup for '" << sym << "'  val: " << ptr << "\n";
+  m_fixups[sym] = ptr;
 }
 
 } } // end namespace

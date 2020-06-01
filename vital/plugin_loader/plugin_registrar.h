@@ -32,7 +32,7 @@
 #define PLUGIN_LOADER_PLUGIN_REGISTRAR_H
 
 #include <vital/plugin_loader/plugin_factory.h>
-#include <vital/plugin_loader/plugin_loader.h>
+
 
 #if ! defined( KWIVER_DEFAULT_PLUGIN_ORGANIZATION )
 #define KWIVER_DEFAULT_PLUGIN_ORGANIZATION "undefined"
@@ -59,29 +59,26 @@ public:
    * \param name Name of this loadable module.
    */
   plugin_registrar( vital::plugin_loader& vpl,
-                    const std::string& name )
-    : mod_name( name )
-    , mod_organization( KWIVER_DEFAULT_PLUGIN_ORGANIZATION )
-    , m_plugin_loader( vpl )
-  {
-  }
+                    const std::string& name );
 
   virtual ~plugin_registrar() = default;
 
+  static void update_vpm( vital::plugin_loader& vpl );
+
   /// Check if module is loaded.
-  virtual bool is_module_loaded() { return m_plugin_loader.is_module_loaded( mod_name ); }
+  virtual bool is_module_loaded();
 
   /// Mark module as loaded.
-  virtual void mark_module_as_loaded() { m_plugin_loader.mark_module_as_loaded( mod_name ); }
+  virtual void mark_module_as_loaded();
 
   /// Return module name.
-  const std::string& module_name() const { return this->mod_name; }
+  const std::string& module_name() const;
 
   /// Return module owning organization.
-  const std::string& organization() const { return this->mod_organization; }
+  const std::string& organization() const;
 
   /// Return reference to the plugin loader.
-  kwiver::vital::plugin_loader& plugin_loader() { return this->m_plugin_loader; }
+  kwiver::vital::plugin_loader& plugin_loader();
 
 private:
   const std::string mod_name;

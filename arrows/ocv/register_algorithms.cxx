@@ -175,6 +175,26 @@ register_factories( kwiver::vital::plugin_loader& vpm )
   reg.mark_module_as_loaded();
 }
 
+
+// ============================================================================
+#define UPDATE_VPM_ADDR_HOOK( XD )                                      \
+extern "C"                                                              \
+XD                                                                      \
+::kwiver::vital::plugin_manager*                                        \
+KV_set_VPM_instance__( ::kwiver::vital::plugin_manager* pm )            \
+{                                                                       \
+  // Save old pointer                                                   \
+  auto* old_vpm = ::kwiver::vital::kwiver_vital_plugin_manager_S_instance; \
+                                                                        \
+  // Update to new pointer                                              \
+  ::kwiver::vital::kwiver_vital_plugin_manager_S_instance = pm;         \
+                                                                        \
+  // Return original                                                    \
+  return old_vpm;                                                       \
+}
+
+UPDATE_VPM_ADDR_HOOK( KWIVER_ALGO_OCV_PLUGIN_EXPORT );
+
 } // end namespace ocv
 } // end namespace arrows
 } // end namespace kwiver

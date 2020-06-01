@@ -62,8 +62,8 @@ static std::string const shared_library_suffix = std::string( SHARED_LIB_SUFFIX 
 
 
 // ---- Static ----
-plugin_manager* plugin_manager::s_instance( 0 );
-
+plugin_manager* plugin_manager::s_instance{ nullptr }; //+ old style
+::kwiver::vital::plugin_manager* kwiver_vital_plugin_manager_S_instance { nullptr };
 
 // ==================================================================
 class plugin_manager::priv

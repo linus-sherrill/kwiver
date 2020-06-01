@@ -50,6 +50,7 @@ namespace vital {
 // base class of factory hierarchy
 class plugin_factory;
 class plugin_loader_filter;
+class plugin_loader_context;
 
 using plugin_factory_handle_t = std::shared_ptr< plugin_factory >;
 using plugin_factory_vector_t = std::vector< plugin_factory_handle_t >;
@@ -70,7 +71,7 @@ class plugin_loader_impl;
 class VITAL_VPM_EXPORT plugin_loader
 {
 public:
-  typedef kwiversys::DynamicLoader   DL;
+  using DL = kwiversys::DynamicLoader;
 
   /**
    * @brief Constructor
@@ -242,6 +243,9 @@ public:
   void clear_filters();
   void add_filter( plugin_filter_handle_t f );
 
+  void add_context( std::unique_ptr<plugin_loader_context>&& ctxt );
+  plugin_loader_context* get_context();
+
 protected:
   friend class plugin_loader_impl;
 
@@ -249,9 +253,26 @@ protected:
   kwiver::vital::logger_handle_t m_logger;
 
 private:
-
   const std::unique_ptr< plugin_loader_impl > m_impl;
+
+  std::unique_ptr< plugin_loader_context> m_vpl_context;
+
 }; // end class plugin_loader
+
+// ============================================================================
+/**
+ * @brief Base class for plugin loader contexts
+ *
+ * This class is the base class for a plugin loader context. The
+ * context is an application specific class that can hold useful items
+ * that are needed during loading time.
+ */
+class plugin_loader_context
+{
+public:
+  plugin_loader_context() = default;
+  virtual ~plugin_loader_context() = default;
+};
 
 } } // end namespace
 

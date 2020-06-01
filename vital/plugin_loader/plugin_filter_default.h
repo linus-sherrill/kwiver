@@ -35,8 +35,12 @@
 
 #include <vital/plugin_loader/plugin_loader_filter.h>
 
+#include <map>
+
 namespace kwiver {
 namespace vital {
+
+class plugin_manager;
 
 // -----------------------------------------------------------------
 /** Default plugin loader filter.
@@ -49,11 +53,23 @@ class VITAL_VPM_EXPORT plugin_filter_default
 {
 public:
   // -- CONSTRUCTORS --
-  plugin_filter_default() = default;
+  plugin_filter_default( plugin_manager* vpm )
+    : m_vpm{ vpm }
+  {}
+
   virtual ~plugin_filter_default() = default;
 
-  virtual bool add_factory( plugin_factory_handle_t fact ) const;
+  bool add_factory( plugin_factory_handle_t fact ) const override;
+  bool load_plugin( path_t const& path,
+                    DL::LibraryHandle lib_handle ) const override;
 
+  void add_fixup( std::string const& sym, void* ptr ); //+ ???
+
+private:
+  plugin_manager* m_vpm;
+
+  // Could be a list of symbols to fixup
+  std::map< std::string, void*> m_fixups;
 }; // end class plugin_filter_default
 
 } } // end namespace
