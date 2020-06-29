@@ -17,6 +17,7 @@ set(vital_vpm_sources
   plugin_manager.cxx
   plugin_filter_default.cxx
   plugin_filter_category.cxx
+  plugin_registrar.cxx
   )
 
 set(vital_vpm_headers_private
@@ -27,7 +28,7 @@ set(vital_vpm_headers_private
   ${CMAKE_CURRENT_BINARY_DIR}/vital_vpm_export.h
   )
 
-kwiver_add_library(vital_vpm
+kwiver_add_library(vital_vpm STATIC
   ${vital_vpm_headers}
   ${vital_vpm_headers_private}
   ${vital_vpm_sources}

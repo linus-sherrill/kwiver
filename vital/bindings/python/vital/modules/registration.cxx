@@ -39,7 +39,6 @@
 #pragma warning (pop)
 #endif
 
-//#include <sprokit/pipeline/utils.h>
 #include <vital/bindings/python/vital/util/pybind11.h>
 #include <vital/bindings/python/vital/util/python_exceptions.h>
 #include <vital/bindings/python/vital/util/python.h>
@@ -89,12 +88,12 @@ MODULES_PYTHON_EXPORT
 void
 register_factories(kwiver::vital::plugin_loader& vpm)
 {
+  ::kwiver::plugin_registrar::update_vpm( vpm );
+
   if (is_suppressed())
   {
     return;
   }
-
-  ::kwiver::plugin_registrar::update_vpm( vpm );
 
   // Check if a python interpreter already exists so we don't clobber sys.argv
   // (e.g. if sprokit is initialized from python)

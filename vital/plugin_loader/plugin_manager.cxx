@@ -44,6 +44,8 @@
 
 #include <mutex>
 
+#include <iostream> //+ TMMP
+
 namespace kwiver {
 namespace vital {
 
@@ -62,8 +64,7 @@ static std::string const shared_library_suffix = std::string( SHARED_LIB_SUFFIX 
 
 
 // ---- Static ----
-plugin_manager* plugin_manager::s_instance( 0 );
-
+::kwiver::vital::plugin_manager* kwiver_vital_plugin_manager_S_instance { nullptr };
 
 // ==================================================================
 class plugin_manager::priv
@@ -95,19 +96,20 @@ instance()
 {
   static std::mutex local_lock;          // synchronization lock
 
-  if (0 != s_instance)
+  if (nullptr != kwiver_vital_plugin_manager_S_instance)
   {
-    return *s_instance;
+    return *kwiver_vital_plugin_manager_S_instance;
   }
 
   std::lock_guard<std::mutex> lock(local_lock);
-  if (0 == s_instance)
+  if (nullptr == kwiver_vital_plugin_manager_S_instance)
   {
     // create new object
-    s_instance = new plugin_manager();
+    kwiver_vital_plugin_manager_S_instance = new plugin_manager();
+    std::cout << ">>>>>>>>>>>>>Allocating new VPM at: " << kwiver_vital_plugin_manager_S_instance << std::endl;
   }
 
-  return *s_instance;
+  return *kwiver_vital_plugin_manager_S_instance;
 }
 
 
@@ -116,6 +118,8 @@ plugin_manager::
 plugin_manager()
   : m_priv( new priv() )
 {
+  // Add our loader context
+  m_priv->m_loader->set_context( std::unique_ptr< plugin_loader_context >( new vpm_context(this) ) );
 
   // Add search paths
   // Craft default search paths. Order of elements in the path has

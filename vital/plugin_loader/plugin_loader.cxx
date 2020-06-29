@@ -440,5 +440,18 @@ void plugin_loader
   m_impl->m_filters.push_back( f );
 }
 
+// ----------------------------------------------------------------------------
+void plugin_loader
+::set_context( std::unique_ptr<plugin_loader_context>&& ctxt )
+{
+  m_vpl_context = std::move( ctxt );
+}
+
+// ----------------------------------------------------------------------------
+plugin_loader_context* plugin_loader
+::get_context()
+{
+  return m_vpl_context.get();
+}
 
 } } // end namespace

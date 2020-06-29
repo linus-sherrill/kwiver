@@ -190,6 +190,7 @@ register_process( sprokit::process::type_t const&        type,
 
   python_process_wrapper const& wrap(obj);
 
+  //+ need to update_vpm address
   kwiver::vital::plugin_manager& vpm = kwiver::vital::plugin_manager::instance();
   auto fact = vpm.add_factory( new python_process_factory( type, // derived type name string
                                                            typeid( sprokit::process ).name(),
