@@ -47,11 +47,12 @@ register_factories( kwiver::vital::plugin_loader& vpm )
 {
   static auto const module_name = kwiver::vital::plugin_manager::module_t( "SMQTK_extract" );
 
+  ::kwiver::plugin_registrar::update_vpm( vpm );
+
   if ( sprokit::is_process_module_loaded( vpm, module_name ) )
   {
     return;
   }
-
 
   // ----------------------------------------------------------------
   auto fact = vpm.ADD_PROCESS( kwiver::supply_image );

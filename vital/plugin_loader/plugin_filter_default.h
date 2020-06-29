@@ -52,7 +52,7 @@ public:
   plugin_filter_default() = default;
   virtual ~plugin_filter_default() = default;
 
-  virtual bool add_factory( plugin_factory_handle_t fact ) const;
+  bool add_factory( plugin_factory_handle_t fact ) const override;
 
 }; // end class plugin_filter_default
 

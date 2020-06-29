@@ -38,7 +38,7 @@
 
 #include <sprokit/pipeline/scheduler_factory.h>
 #include <schedulers/examples/schedulers_examples_export.h>
-
+#include <vital/plugin_loader/plugin_registrar.h>
 
 extern "C"
 SCHEDULERS_EXAMPLES_EXPORT
@@ -46,6 +46,8 @@ void
 register_factories( kwiver::vital::plugin_loader& vpm )
 {
   static auto const module_name = kwiver::vital::plugin_manager::module_t("example_schedulers");
+
+  ::kwiver::plugin_registrar::update_vpm( vpm );
 
   if ( sprokit::is_scheduler_module_loaded( vpm, module_name ) )
   {

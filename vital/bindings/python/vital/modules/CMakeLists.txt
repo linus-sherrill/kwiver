@@ -22,6 +22,7 @@ kwiver_add_plugin( modules_python
   PRIVATE         vital_python_util
                   kwiversys
                   vital_logger
+                  vital_vpm
                   ${${pybind11_library}}
                   ${PYTHON_LIBRARIES}
                   )

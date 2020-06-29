@@ -60,12 +60,11 @@ public:
                           const std::string& cat);
   virtual ~plugin_filter_category() = default;
 
-  virtual bool add_factory( plugin_factory_handle_t fact ) const;
+  bool add_factory( plugin_factory_handle_t fact ) const override;
 
 private:
   plugin_filter_category::condition m_condition;
   std::string m_category;
-
 }; // end class plugin_filter_category
 
 } } // end namespace

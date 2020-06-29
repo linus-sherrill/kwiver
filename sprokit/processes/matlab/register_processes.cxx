@@ -46,6 +46,8 @@ void register_factories( kwiver::vital::plugin_loader& vpm )
 {
   static const auto module_name = kwiver::vital::plugin_manager::module_t( "kwiver_processes_matlab" );
 
+  ::kwiver::plugin_registrar::update_vpm( vpm );
+
   if ( sprokit::is_process_module_loaded( vpm, module_name ) )
   {
     return;

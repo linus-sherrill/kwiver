@@ -45,6 +45,7 @@
 #include <vital/bindings/python/vital/util/python.h>
 
 #include <vital/plugin_loader/plugin_loader.h>
+#include <vital/plugin_loader/plugin_registrar.h>
 #include <kwiversys/SystemTools.hxx>
 
 #ifdef VITAL_LOAD_PYLIB_SYM
@@ -92,6 +93,8 @@ register_factories(kwiver::vital::plugin_loader& vpm)
   {
     return;
   }
+
+  ::kwiver::plugin_registrar::update_vpm( vpm );
 
   // Check if a python interpreter already exists so we don't clobber sys.argv
   // (e.g. if sprokit is initialized from python)

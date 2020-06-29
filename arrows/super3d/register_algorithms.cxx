@@ -48,7 +48,10 @@ void
 register_factories( kwiver::vital::plugin_loader& vpm )
 {
   static auto const module_name = std::string( "arrows.super3d" );
-  if (vpm.is_module_loaded( module_name ) )
+
+  ::kwiver::plugin_registrar::update_vpm( vpm );
+
+if (vpm.is_module_loaded( module_name ) )
   {
     return;
   }
