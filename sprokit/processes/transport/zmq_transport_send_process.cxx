@@ -3,20 +3,24 @@
 // https://github.com/Kitware/kwiver/blob/master/LICENSE for details.
 
 #include "zmq_transport_send_process.h"
-
-#include <sprokit/pipeline/process_exception.h>
+#include "transport_util.h"
 
 #include <kwiver_type_traits.h>
+#include <zmq.hpp>
+
 #include <memory.h>
 
 namespace kwiver {
 
 // (config-key, value-type, default-value, description )
 create_config_trait( port, int, "5550",
-                     "Port number to connect/bind to.");
+                     "Port number to connect/bind to.\n\n"
+                     "This will consume two ports. "
+                     "The port specified and the next one.");
 
 create_config_trait( expected_subscribers, int, "1",
-                     "Number of subscribers to wait for before starting to publish");
+                     "Number of subscribers to wait for before starting to publish.\n\n"
+                     "If zero is entered, then this process will not wait for any subscribers.");
 
 /**
  * \class zmq_transport_send_process
@@ -114,21 +118,42 @@ void zmq_transport_send_process
 ::_init()
 {
   d->connect();
+
+  // Disable input checking by the framework
+  this->set_data_checking_level( check_none );
 }
 
 // ----------------------------------------------------------------
 void zmq_transport_send_process
 ::_step()
 {
+  auto mess_dat = peek_at_datum_using_trait( serialized_message );
   auto mess = grab_from_port_using_trait( serialized_message );
 
   scoped_step_instrumentation();
 
+  auto dat_type = mess_dat->type();
+
+  // We need to handle the "complete" datum locally because we have
+  // selected "check_none" as checking_level.
+  if ( dat_type == sprokit::datum::complete )
+  {
+    mark_process_as_complete();
+  }
+
+  // Encode the datum type as the first character of the message. The
+  // datum type needs to be forwarded so that flow termination can be
+  // signaled.
   // We know that the message is a pointer to a std::string
-  // send mess to the transport
-  LOG_TRACE( logger(), "Sending datagram of size " << mess->size() );
-  zmq::message_t datagram(mess->size());
-  memcpy((void *) datagram.data(), (mess->c_str()), mess->size());
+  // send mess to the transport.
+  //
+  // Need to prepend the datum type to the message.
+  auto out_mess = transport_util::encode_datum_type( dat_type );
+  out_mess += *mess;
+
+  LOG_TRACE( logger(), "Sending datagram of size " << out_mess.size() );
+  zmq::message_t datagram(out_mess.size());
+  memcpy((void *) datagram.data(), (out_mess.c_str()), out_mess.size());
   d->m_pub_socket.send(datagram);
 }
 
@@ -176,7 +201,7 @@ zmq_transport_send_process::priv
   LOG_TRACE( m_logger, "PUB Connect for " << pub_connect_string.str() );
   m_pub_socket.bind( pub_connect_string.str() );
 
-  // Wait for replies from expected number of subscribers before sending antying
+  // Wait for replies from expected number of subscribers before sending anything
   std::ostringstream sync_connect_string;
   sync_connect_string << "tcp://*:" << ( m_port + 1 );
   LOG_TRACE( m_logger, "SYNC Connect for " << sync_connect_string.str() );
@@ -187,15 +212,18 @@ zmq_transport_send_process::priv
              << m_expected_subscribers << " subscribers" );
   while ( subscribers < m_expected_subscribers )
   {
+    // Receive empty message
     zmq::message_t datagram;
     m_sync_socket.recv( &datagram );
     LOG_TRACE( m_logger, "SYNC Loop, received reply from subscriber "
                << subscribers << " of " << m_expected_subscribers );
 
+    // Send empty message as ack
     zmq::message_t datagram_o;
     m_sync_socket.send( datagram_o );
     ++subscribers;
   }
+
   LOG_TRACE( m_logger, "SYNC Loop done, all " << subscribers << " received" );
 }
 

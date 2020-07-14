@@ -2,13 +2,17 @@ project( kwiver_processes_transport )
 
 if ( KWIVER_ENABLE_ZeroMQ )
   set(zmq_sources
+    transport_util.cxx
     zmq_transport_receive_process.cxx
     zmq_transport_send_process.cxx
+    zmq_transport_bridge_process.cxx
     )
 
   set(zmq_headers
+    transport_util.h
     zmq_transport_receive_process.h
     zmq_transport_send_process.h
+    zmq_transport_bridge_process.h
     )
   include(kwiver-depends-ZeroMQ)
 endif ( KWIVER_ENABLE_ZeroMQ )
@@ -33,7 +37,7 @@ kwiver_add_plugin( kwiver_processes_transport
   SOURCES     ${sources}
               ${private_headers}
   PRIVATE     sprokit_pipeline
-              vital vital_vpm
+              vital vital_vpm vital_util
               ${ZeroMQ_LIBRARY}
   )
 

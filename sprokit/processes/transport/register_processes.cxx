@@ -13,6 +13,7 @@
 #if WITH_ZMQ
 #include "zmq_transport_send_process.h"
 #include "zmq_transport_receive_process.h"
+#include "zmq_transport_bridge_process.h"
 #endif
 
 // ---------------------------------------------------------------------------------------
@@ -40,6 +41,7 @@ register_factories( kwiver::vital::plugin_loader& vpm )
 
   reg.register_process< kwiver::zmq_transport_send_process >();
   reg.register_process< kwiver::zmq_transport_receive_process >();
+  reg.register_process< kwiver::zmq_transport_bridge_process >();
 
 #endif
 

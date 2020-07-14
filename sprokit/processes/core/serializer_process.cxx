@@ -133,8 +133,6 @@ void
 serializer_process
 ::_step()
 {
-  scoped_step_instrumentation();
-
   // Loop over all registered messages
   for ( auto msg_spec_it : m_message_spec_list )
   {

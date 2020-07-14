@@ -3,19 +3,26 @@
 // https://github.com/Kitware/kwiver/blob/master/LICENSE for details.
 
 #include "zmq_transport_receive_process.h"
-
-#include <sprokit/pipeline/process_exception.h>
+#include "transport_util.h"
 
 #include <kwiver_type_traits.h>
+#include <zmq.hpp>
 
 namespace kwiver {
 
 // (config-key, value-type, default-value, description )
 create_config_trait( port, int, "5550",
-                     "Port number to connect/bind to");
+                     "Port number to connect/bind to.\n\n"
+                     "Two ports are used for each publisher being listened to. "
+                     "The selected port and the next one (port+1). "
+                     "If more than one published is being handled, then the next "
+                     "publisher is expected to be on port+2, with the sync port "
+                     "at port+3.");
 
 create_config_trait( connect_host, std::string, "localhost",
-                     "Hostname (or IP address) to connect to." );
+                     "Hostname (or IP address) to connect to.\n\n"
+                     "This is the host name/address of the sender that we want "
+                     "receive messages from.");
 
 create_config_trait( num_publishers, int, "1",
                      "Number of publishers to subscribe to. ");
@@ -65,7 +72,7 @@ class zmq_transport_receive_process::priv
 {
 public:
   priv();
-  ~priv();
+  ~priv() = default;
 
   void connect();
 
@@ -132,11 +139,28 @@ void zmq_transport_receive_process
   zmq::message_t datagram;
   d->m_sub_socket.recv(&datagram);
 
-  auto msg = std::make_shared< std::string >(static_cast<char *>(datagram.data()), datagram.size());
-  LOG_TRACE( logger(), "Received datagram of size " << msg->size() );
+  LOG_TRACE( logger(), "Received datagram of size " << datagram.size() );
 
   // We know that the message is a pointer to a std::string
-  push_to_port_using_trait( serialized_message, msg );
+  auto msg = std::make_shared< std::string >(static_cast<char *>(datagram.data()), datagram.size());
+
+  // Retrieve the datum type form the message
+  auto const type { transport_util::decode_datum_type( *msg ) };
+
+  // Complete datum does not carry any data.
+  if ( type == sprokit::datum::complete )
+  {
+    mark_process_as_complete();
+    const sprokit::datum_t dat { sprokit::datum::complete_datum() };
+    push_datum_to_port_using_trait( serialized_message, dat );
+  }
+  else
+  {
+    // In theory, we should handle all the other datum types, but in
+    // practice, we never see them.
+    *msg = transport_util::strip_datum_type( *msg );
+    push_to_port_using_trait( serialized_message, msg );
+  }
 }
 
 // ----------------------------------------------------------------
@@ -167,11 +191,6 @@ zmq_transport_receive_process::priv
 {
 }
 
-zmq_transport_receive_process::priv
-::~priv()
-{
-}
-
 // ----------------------------------------------------------------------------
 void
 zmq_transport_receive_process::priv
@@ -182,11 +201,12 @@ zmq_transport_receive_process::priv
 
   // We start with our base port.  Even ports are the pub/sub socket
   // Odd ports (pub/sub + 1) are the sync sockets
-  for ( int i = 0; i < m_num_publishers * 2; i+=2 )
+  for ( int i = 0; i < m_num_publishers * 2; i += 2 )
   {
-    std::shared_ptr< zmq::socket_t > sync_socket = std::make_shared< zmq::socket_t >( m_context, ZMQ_REQ );
+    auto sync_socket = std::make_shared< zmq::socket_t >( m_context, ZMQ_REQ );
     m_sync_sockets.push_back(sync_socket);
 
+    // Note that a ZMQ socket can connect to multiples.
     std::ostringstream sub_connect_string;
     sub_connect_string << "tcp://" << m_connect_host << ":" << m_port + i;
     LOG_TRACE( m_logger, "SUB Connect for " << sub_connect_string.str() );
@@ -197,6 +217,7 @@ zmq_transport_receive_process::priv
     LOG_TRACE( m_logger, "SYNC Connect for " << sync_connect_string.str() );
     sync_socket->connect( sync_connect_string.str() );
 
+    // Send ack back to PUB process
     zmq::message_t datagram;
     sync_socket->send(datagram);
 

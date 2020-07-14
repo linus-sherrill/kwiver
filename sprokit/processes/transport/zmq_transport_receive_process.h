@@ -6,7 +6,6 @@
 #define KWIVER_TRANSPORT_ZMQ_TRANSPORT_RECEIVE_PROCESS_H
 
 #include <sprokit/pipeline/process.h>
-#include <zmq.hpp>
 
 #include "kwiver_processes_transport_export.h"
 
@@ -24,15 +23,16 @@ class KWIVER_PROCESSES_TRANSPORT_NO_EXPORT zmq_transport_receive_process
 {
 public:
   PLUGIN_INFO( "zmq_transport_receive",
-               "Receives serialized buffer from ZMQ transport and pushes to output." )
+               "Receives serialized buffer from ZMQ transport and pushes to output.\n\n"
+               "This process acts as a source of data.")
 
   zmq_transport_receive_process( kwiver::vital::config_block_sptr const& config );
   virtual ~zmq_transport_receive_process();
 
 protected:
-  virtual void _configure();
-  virtual void _init();
-  virtual void _step();
+  void _configure() override;
+  void _init() override;
+  void _step() override;
 
 private:
   void make_ports();

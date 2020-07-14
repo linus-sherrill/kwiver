@@ -100,8 +100,6 @@ void
 deserializer_process
 ::_step()
 {
-  scoped_step_instrumentation();
-
   // Loop over all registered groups
   for (const auto msg_spec_it : m_message_spec_list )
   {

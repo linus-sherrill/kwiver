@@ -6,7 +6,6 @@
 #define KWIVER_TRANSPORT_ZMQ_TRANSPORT_SEND_PROCESS_H
 
 #include <sprokit/pipeline/process.h>
-#include <zmq.hpp>
 
 #include "kwiver_processes_transport_export.h"
 
@@ -23,15 +22,16 @@ class KWIVER_PROCESSES_TRANSPORT_NO_EXPORT zmq_transport_send_process
 {
 public:
   PLUGIN_INFO( "zmq_transport_send",
-               "Send serialized buffer to ZMQ transport." )
+               "Send serialized buffer to ZMQ transport.\n\n"
+               "This process acts as a data sink.")
 
   zmq_transport_send_process( kwiver::vital::config_block_sptr const& config );
   virtual ~zmq_transport_send_process();
 
 protected:
-  virtual void _configure();
-  virtual void _init();
-  virtual void _step();
+  void _configure() override;
+  void _init() override;
+  void _step() override;
 
 private:
   void make_ports();
