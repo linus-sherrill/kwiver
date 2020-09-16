@@ -39,6 +39,7 @@ namespace protobuf {
   class geo_point;
   class geo_polygon;
   class image;
+  class integer;
   class metadata;
   class metadata_vector;
   class object_track_state;
@@ -146,6 +147,15 @@ void convert_protobuf( const ::kwiver::protobuf::image&       proto_img,
 KWIVER_SERIALIZE_PROTOBUF_EXPORT
 void convert_protobuf( const ::kwiver::vital::image_container_sptr  img,
                        ::kwiver::protobuf::image&                   proto_img  );
+
+// ---- integer
+KWIVER_SERIALIZE_PROTOBUF_EXPORT
+void convert_protobuf( const ::kwiver::protobuf::integer& proto,
+                       int32_t& data );
+
+KWIVER_SERIALIZE_PROTOBUF_EXPORT
+void convert_protobuf( const int32_t  data,
+                       ::kwiver::protobuf::integer& proto );
 
 // ---- timestamp
 KWIVER_SERIALIZE_PROTOBUF_EXPORT

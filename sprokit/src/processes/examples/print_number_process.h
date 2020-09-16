@@ -43,7 +43,7 @@ class PROCESSES_EXAMPLES_NO_EXPORT print_number_process
 {
 public:
   PLUGIN_INFO( "print_number",
-               "Print numbers to a file" );
+               "Print numbers to a file." );
   /**
    * \brief Constructor.
    *

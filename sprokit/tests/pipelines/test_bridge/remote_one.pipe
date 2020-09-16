@@ -1,0 +1,16 @@
+#
+# Remote pipeline file for testing the pipeline bridge.
+# For this test, the input is retunred as the output. The serialized messages
+# are just looped back without any further inspection.
+#
+
+# --------------------------------------------------
+process zmq_r :: zmq_transport_receive
+  port = 5550
+  num_publishers = 1
+
+# --------------------------------------------------
+process zmq_s :: zmq_transport_send
+  port = 5552
+
+connect from zmq_r.serialized_message to zmq_s.serialized_message

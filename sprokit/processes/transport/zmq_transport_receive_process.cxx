@@ -150,16 +150,17 @@ void zmq_transport_receive_process
   // Complete datum does not carry any data.
   if ( type == sprokit::datum::complete )
   {
+    LOG_TRACE( logger(), "Received complete datum" );
+
     mark_process_as_complete();
     const sprokit::datum_t dat { sprokit::datum::complete_datum() };
     push_datum_to_port_using_trait( serialized_message, dat );
   }
   else
   {
-    // In theory, we should handle all the other datum types, but in
-    // practice, we never see them.
     *msg = transport_util::strip_datum_type( *msg );
-    push_to_port_using_trait( serialized_message, msg );
+    auto out_datum = transport_util::new_datum_from_type( type, msg );
+    push_datum_to_port_using_trait( serialized_message, out_datum );
   }
 }
 

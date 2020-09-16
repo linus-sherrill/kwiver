@@ -45,15 +45,6 @@ namespace kwiver {
  */
 class KWIVER_PROCESSES_TRANSPORT_EXPORT transport_util
 {
-private:
-// Define the in-band (string) representation for the datum types.
-static std::string const datum_type_data;
-static std::string const datum_type_empty;
-static std::string const datum_type_error;
-static std::string const datum_type_invalid;
-static std::string const datum_type_flush;
-static std::string const datum_type_complete;
-
 public:
 /**
  * \brief Convert datum type to zmq encoding.
@@ -90,6 +81,31 @@ static sprokit::datum::type_t decode_datum_type( std::string const& dat );
  * \returns Message string with the encoded datum type removed.
  */
 static std::string strip_datum_type( std::string const& msg );
+
+/**
+ * \brief Create datum of correct type.
+ *
+ * This method creates a new sprokit::datum based on the type code
+ * supplied. If the type is 'data', then the supplied data element is
+ * stored in the datum. If the datum is a control type, then no data
+ * is associated with the datum.
+ *
+ * \param typ Datum type code
+ * \param dat Data for datum
+ *
+ * \return sprokit::datum of the specified type.
+ */
+template< typename T>
+static sprokit::datum_t new_datum_from_type( sprokit::datum::type_t type, T const& dat );
+
+private:
+// Define the in-band (string) representation for the datum types.
+static std::string const datum_type_data;
+static std::string const datum_type_empty;
+static std::string const datum_type_error;
+static std::string const datum_type_invalid;
+static std::string const datum_type_flush;
+static std::string const datum_type_complete;
 
 };
 

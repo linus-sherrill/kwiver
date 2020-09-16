@@ -39,7 +39,9 @@ class PROCESSES_EXAMPLES_NO_EXPORT take_number_process
 {
 public:
   PLUGIN_INFO( "take_number",
-               "Print numbers to a file" );
+               "Accept a number and absorb it. "
+               "This is just a sink process and there is no output." );
+
   /**
    * \brief Constructor.
    *

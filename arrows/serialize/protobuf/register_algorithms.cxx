@@ -16,6 +16,7 @@
 #include "detected_object.h"
 #include "detected_object_set.h"
 #include "image.h"
+#include "integer.h"
 #include "metadata.h"
 #include "string.h"
 #include "timestamp.h"
@@ -54,6 +55,7 @@ register_factories( kwiver::vital::plugin_loader& vpm )
   reg.register_algorithm< timestamp >();
   reg.register_algorithm< metadata >();
   reg.register_algorithm< image >();
+  reg.register_algorithm< integer >();
   reg.register_algorithm< image >( "kwiver:mask" );
   reg.register_algorithm< string >();
   reg.register_algorithm< track_state >();

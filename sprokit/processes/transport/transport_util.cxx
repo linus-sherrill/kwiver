@@ -54,13 +54,18 @@ transport_util
 {
   switch (type)
   {
-  case sprokit::datum::data: return datum_type_data;
-  case sprokit::datum::empty: return datum_type_empty;
-  default:
-  case sprokit::datum::error: return datum_type_error;
-  case sprokit::datum::invalid: return datum_type_invalid;
-  case sprokit::datum::flush: return datum_type_flush;
+  case sprokit::datum::data:     return datum_type_data;
+  case sprokit::datum::empty:    return datum_type_empty;
+  case sprokit::datum::error:    return datum_type_error;
+  case sprokit::datum::invalid:  return datum_type_invalid;
+  case sprokit::datum::flush:    return datum_type_flush;
   case sprokit::datum::complete: return datum_type_complete;
+  default:
+    // This really unexpected. There is no recovery.
+    std::stringstream msg;
+    msg << "Unexpected datum type. Received \""
+        << type << "\"";
+    VITAL_THROW( vital::serialization_exception, msg.str() );
   } // end switch
 }
 
@@ -92,7 +97,39 @@ std::string
 transport_util
 ::strip_datum_type( std::string const& msg )
 {
-  return msg.substr( 4 );
+  if (msg.size() > 4 )
+  {
+    return msg.substr( 4 );
+  }
+
+  return std::string();
 }
+
+// ----------------------------------------------------------------------------
+template< typename T>
+sprokit::datum_t
+transport_util
+::new_datum_from_type( sprokit::datum::type_t type, T const& data )
+{
+  switch (type)
+  {
+  case sprokit::datum::data:     return sprokit::datum::new_datum<T>( data );
+  case sprokit::datum::empty:    return sprokit::datum::empty_datum();
+  case sprokit::datum::error:    return sprokit::datum::error_datum( "Error lost in translation" );
+  case sprokit::datum::flush:    return sprokit::datum::flush_datum();
+  case sprokit::datum::complete: return sprokit::datum::complete_datum();
+  default:
+    // This really unexpected. There is no recovery.
+    std::stringstream msg;
+    msg << "Unexpected datum type. Received \""
+        << type << "\"";
+    VITAL_THROW( vital::serialization_exception, msg.str() );
+  } // end switch
+}
+
+template sprokit::datum_t transport_util
+::new_datum_from_type< std::shared_ptr< std::string > >(
+  sprokit::datum::type_t type,
+  std::shared_ptr< std::string > const& data );
 
 } // end namespace kwiver

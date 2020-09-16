@@ -1,0 +1,36 @@
+#
+# This pipeline file is the main driver and uses
+# remote_one.pipe as the remote pipeline.
+#
+
+# --------------------------------------------------------------
+# source process
+process num :: numbers
+  start = 0
+  end = 50
+
+connect from num.number to ser.msg/number
+
+# --------------------------------------------------------------
+process ser :: serializer
+  serialization_type = protobuf
+
+connect from ser.msg to bridge.serialized_message
+
+# --------------------------------------------------------------
+process bridge :: zmq_transport_bridge
+ port = 5550
+
+connect from bridge.serialized_message to deser.msg
+
+## connect from ser.msg to deser.msg
+
+# --------------------------------------------------------------
+process deser :: deserializer
+  serialization_type = protobuf
+
+connect from deser.msg/number to print.number
+
+# --------------------------------------------------------------
+process print :: print_number
+  output = numbers.txt

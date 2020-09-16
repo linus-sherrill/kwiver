@@ -167,7 +167,6 @@ void zmq_transport_bridge_process
 void zmq_transport_bridge_process
 ::_init()
 {
-  LOG_DEBUG( logger(), "-- Calling connect from init"); //+
   d->connect();
 
   // start threads.
@@ -182,8 +181,6 @@ void zmq_transport_bridge_process
 void zmq_transport_bridge_process
 ::_finalize()
 {
-  LOG_DEBUG( logger(), "-- in finalize"); //+
-
   d->running = false;
   try
   {
@@ -200,11 +197,6 @@ void zmq_transport_bridge_process
 void zmq_transport_bridge_process
 ::_step()
 {
-  //+ May need to change the sync checking mode
-  // There may be a problem with another thread grabbing from the port.
-  // Maybe just signal if data is present, without removing it. Or put it back (no, bad idea).
-  // Maybe it will be o.k.
-
   // N.B. There is no scoped instrumentation here because of the
   // blocking behaviour, all the work done in the supporting threads,
   // and there is not much work being done here anyway.
@@ -212,56 +204,54 @@ void zmq_transport_bridge_process
   lock lk(d->monitor);
   d->data_ready.wait(lk);
 
-  //loop until no more work to do
-  int flag{ 0 };
-  do {
-    flag = 0;
+  // Handle traffic going to remote pipeline.
 
-    // Handle traffic going to remote pipeline
-    //+ if ( ! d->send_buffer.Empty() )
+  // In this case, we always empty the input buffer since all inputs
+  // have been collected by the send thread (which is running
+  // asynchronously). Normally we should abide by the one input and
+  // one output per step().
+  while ( ! d->send_buffer.Empty() )
+  {
+    auto mess = d->send_buffer.Receive();
+    // We know that the message is a pointer to a std::string send
+    // mess to the transport. Also, the datum type has already been
+    // encoded in the message.
+    LOG_TRACE( logger(), "Sending datagram of size " << mess->size() );
+    zmq::message_t datagram(mess->size());
+    memcpy((void *) datagram.data(), mess->c_str(), mess->size());
+    d->m_pub_socket.send(datagram);
+  }
 
+  // Handle traffic from the remote pipeline. The datum encoding is
+  // still in the message.
+
+  // In this case we only push a single output per step().
+  if ( ! d->receive_buffer.Empty() )
+  {
+    auto msg = d->receive_buffer.Receive();
+
+    // Retrieve the datum type form the message
+    auto const type { transport_util::decode_datum_type( *msg ) };
+
+    // Complete datum does not carry any data.
+    if ( type == sprokit::datum::complete )
     {
-      ++flag; // indicate work done
-      auto mess = d->send_buffer.Receive();
-      // We know that the message is a pointer to a std::string send
-      // mess to the transport. Also, the datum type has already been
-      // encoded in the message.
-      LOG_TRACE( logger(), "Sending datagram of size " << mess->size() );
-      zmq::message_t datagram(mess->size());
-      memcpy((void *) datagram.data(), mess->c_str(), mess->size());
-      d->m_pub_socket.send(datagram);
-    }
+      LOG_TRACE( logger(), "Received complete datum" );
 
-    // Handle traffic from the remote pipeline. The datum encoding is
-    // still in the message.
-    if ( ! d->receive_buffer.Empty() )
+      // The remote pipeline has terminated.
+      mark_process_as_complete();
+      d->running = false; // stop threads;
+
+      const sprokit::datum_t dat { sprokit::datum::complete_datum() };
+      push_datum_to_port_using_trait( serialized_message, dat );
+    }
+    else
     {
-      ++flag; // if data in buffer
-      auto msg = d->receive_buffer.Receive();
-
-      // Retrieve the datum type form the message
-      auto const type { transport_util::decode_datum_type( *msg ) };
-
-      // Complete datum does not carry any data.
-      if ( type == sprokit::datum::complete )
-      {
-        // The remote pipeline has terminated.
-        mark_process_as_complete();
-        d->running = false; // stop threads;
-
-        const sprokit::datum_t dat { sprokit::datum::complete_datum() };
-        push_datum_to_port_using_trait( serialized_message, dat );
-      }
-      else
-      {
-        // In theory, we should handle all the other datum types, but in
-        // practice, we never see them.
-        *msg = transport_util::strip_datum_type( *msg );
-        push_to_port_using_trait( serialized_message, msg );
-      }
-
+      *msg = transport_util::strip_datum_type( *msg );
+      auto out_datum = transport_util::new_datum_from_type( type, msg );
+      push_datum_to_port_using_trait( serialized_message, out_datum );
     }
-  } while ( flag );
+  }
 }
 
 // ----------------------------------------------------------------
@@ -361,23 +351,27 @@ void zmq_transport_bridge_process
 {
   LOG_DEBUG( logger(), "Starting send thread");
   do {
-    auto mess_dat = peek_at_datum_using_trait( serialized_message );
-    auto mess = grab_from_port_using_trait( serialized_message );
-    auto dat_type = mess_dat->type();
+    auto const mess_dat = grab_datum_from_port_using_trait( serialized_message );
+    auto const dat_type = mess_dat->type();
 
-    // We need to handle the "complete" datum locally because we have
-    // selected "check_none" as checking_level.
-    if ( dat_type == sprokit::datum::complete )
-    {
-      mark_process_as_complete();
-    }
+    serialized_message_type_trait::type mess;
 
     // Need to prepend the datum type to the message.
-    auto out_mess = transport_util::encode_datum_type( dat_type );
-    *mess = out_mess + *mess;
+    auto const out_type = transport_util::encode_datum_type( dat_type );
 
+    // There is only data with this type of packet.
+    if ( dat_type == sprokit::datum::data )
+    {
+      mess = mess_dat->get_datum< serialized_message_type_trait::type >();
+    }
+    else
+    {
+      mess = std::make_shared< std::string >();
+    }
+
+    // Prepend datum type
+    *mess = out_type + *mess;
     d->send_buffer.Send( mess );
-
     d->data_ready.notify_one();
   } while ( d->running );
 

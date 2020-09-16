@@ -12,9 +12,9 @@
  * \brief Implementation of the constant number process.
  */
 
-namespace sprokit
-{
+namespace sprokit {
 
+// ----------------------------------------------------------------------------
 class const_number_process::priv
 {
   public:
@@ -34,6 +34,7 @@ kwiver::vital::config_block_key_t const const_number_process::priv::config_value
 kwiver::vital::config_block_value_t const const_number_process::priv::default_value = kwiver::vital::config_block_value_t("0");
 process::port_t const const_number_process::priv::port_output = port_t("number");
 
+// ----------------------------------------------------------------------------
 const_number_process
 ::const_number_process(kwiver::vital::config_block_sptr const& config)
   : process(config)
@@ -42,7 +43,7 @@ const_number_process
   declare_configuration_key(
     priv::config_value,
     priv::default_value,
-    kwiver::vital::config_block_description_t("The value to start counting at."));
+    kwiver::vital::config_block_description_t("The value to output."));
 
   port_flags_t required;
 
@@ -60,6 +61,7 @@ const_number_process
 {
 }
 
+// ----------------------------------------------------------------------------
 void
 const_number_process
 ::_configure()
@@ -74,6 +76,7 @@ const_number_process
   process::_configure();
 }
 
+// ----------------------------------------------------------------------------
 void
 const_number_process
 ::_step()
@@ -83,6 +86,7 @@ const_number_process
   process::_step();
 }
 
+// ----------------------------------------------------------------------------
 const_number_process::priv
 ::priv(number_t v)
   : value(v)
@@ -94,4 +98,4 @@ const_number_process::priv
 {
 }
 
-}
+} // end namespace

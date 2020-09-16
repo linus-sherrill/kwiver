@@ -15,6 +15,7 @@ set( proto_files
   geo_point.proto
   geo_polygon.proto
   image.proto
+  integer.proto
   metadata.proto
   polygon.proto
   string.proto

@@ -35,6 +35,7 @@
 #include <vital/types/protobuf/metadata.pb.h>
 #include <vital/types/protobuf/string.pb.h>
 #include <vital/types/protobuf/image.pb.h>
+#include <vital/types/protobuf/integer.pb.h>
 #include <vital/types/protobuf/track.pb.h>
 #include <vital/types/protobuf/track_set.pb.h>
 #include <vital/types/protobuf/track_state.pb.h>
@@ -481,6 +482,20 @@ void convert_protobuf( const ::kwiver::vital::image_container_sptr img,
     }
   }
   delete []out_buf;
+}
+
+// ----------------------------------------------------------------------------
+void convert_protobuf( const ::kwiver::protobuf::integer& proto,
+                       int32_t& data )
+{
+  data = proto.data();
+}
+
+// ----------------------------------------------------------------------------
+void convert_protobuf( const int32_t data,
+                       ::kwiver::protobuf::integer& proto  )
+{
+  proto.set_data( data );
 }
 
 // ----------------------------------------------------------------------------

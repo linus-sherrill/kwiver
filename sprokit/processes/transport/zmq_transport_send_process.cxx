@@ -127,8 +127,7 @@ void zmq_transport_send_process
 void zmq_transport_send_process
 ::_step()
 {
-  auto mess_dat = peek_at_datum_using_trait( serialized_message );
-  auto mess = grab_from_port_using_trait( serialized_message );
+  auto const mess_dat = grab_datum_from_port_using_trait( serialized_message );
 
   scoped_step_instrumentation();
 
@@ -149,7 +148,13 @@ void zmq_transport_send_process
   //
   // Need to prepend the datum type to the message.
   auto out_mess = transport_util::encode_datum_type( dat_type );
-  out_mess += *mess;
+
+  // There is only data with this type of packet.
+  if ( dat_type == sprokit::datum::data )
+  {
+    auto const mess = mess_dat->get_datum< serialized_message_type_trait::type >();
+    out_mess += *mess;
+  }
 
   LOG_TRACE( logger(), "Sending datagram of size " << out_mess.size() );
   zmq::message_t datagram(out_mess.size());

@@ -20,6 +20,7 @@ set( headers_public
   metadata.h
   timestamp.h
   image.h
+  integer.h
   string.h
   track_set.h
   track_state.h
@@ -40,6 +41,7 @@ set( sources
   metadata.cxx
   timestamp.cxx
   image.cxx
+  integer.cxx
   string.cxx
   track_set.cxx
   track_state.cxx
