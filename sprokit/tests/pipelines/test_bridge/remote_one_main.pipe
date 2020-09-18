@@ -7,7 +7,7 @@
 # source process
 process num :: numbers
   start = 0
-  end = 50
+  end = 10
 
 connect from num.number to ser.msg/number
 

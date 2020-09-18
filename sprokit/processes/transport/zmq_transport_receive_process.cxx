@@ -137,12 +137,13 @@ void zmq_transport_receive_process
   LOG_TRACE( logger(), "Waiting for datagram..." );
 
   zmq::message_t datagram;
-  d->m_sub_socket.recv(&datagram);
-
-  LOG_TRACE( logger(), "Received datagram of size " << datagram.size() );
+  d->m_sub_socket.recv( &datagram );
 
   // We know that the message is a pointer to a std::string
   auto msg = std::make_shared< std::string >(static_cast<char *>(datagram.data()), datagram.size());
+
+  LOG_TRACE( logger(), "Received datagram of size " << datagram.size()
+             << "  Type: " << msg->substr(0,4) );
 
   // Retrieve the datum type form the message
   auto const type { transport_util::decode_datum_type( *msg ) };
@@ -198,7 +199,7 @@ zmq_transport_receive_process::priv
 ::connect()
 {
   LOG_DEBUG( m_logger, "Number of publishers " << m_num_publishers );
-  m_sub_socket.setsockopt(ZMQ_SUBSCRIBE,"",0);
+  m_sub_socket.setsockopt( ZMQ_SUBSCRIBE, "", 0 );
 
   // We start with our base port.  Even ports are the pub/sub socket
   // Odd ports (pub/sub + 1) are the sync sockets
@@ -209,7 +210,7 @@ zmq_transport_receive_process::priv
 
     // Note that a ZMQ socket can connect to multiples.
     std::ostringstream sub_connect_string;
-    sub_connect_string << "tcp://" << m_connect_host << ":" << m_port + i;
+    sub_connect_string << "tcp://" << m_connect_host << ":" << ( m_port + i );
     LOG_TRACE( m_logger, "SUB Connect for " << sub_connect_string.str() );
     m_sub_socket.connect( sub_connect_string.str() );
 
@@ -219,14 +220,14 @@ zmq_transport_receive_process::priv
     sync_socket->connect( sync_connect_string.str() );
 
     // Send ack back to PUB process
-    zmq::message_t datagram;
+    zmq::message_t datagram( "REQ", 3 );
     sync_socket->send(datagram);
 
     zmq::message_t datagram_i;
-    LOG_TRACE( m_logger, "Waiting for SYNC reply, pub: " << i << " at " << m_port + i + 1 );
+    LOG_TRACE( m_logger, "Waiting for SYNC reply, pub: " << i << " at " << ( m_port + i + 1 ) );
     sync_socket->recv(&datagram_i);
-    LOG_TRACE( m_logger, "SYNC reply received, pub: " << i << " at " <<  m_port + i + 1 );
-  }
+    LOG_TRACE( m_logger, "SYNC reply received, pub: " << i << " at " <<  ( m_port + i + 1 ) );
+  } // end for
 }
 
 } // end namespace

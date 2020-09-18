@@ -127,6 +127,7 @@ transport_util
   } // end switch
 }
 
+// Explicit instantiation for serialized messages
 template sprokit::datum_t transport_util
 ::new_datum_from_type< std::shared_ptr< std::string > >(
   sprokit::datum::type_t type,

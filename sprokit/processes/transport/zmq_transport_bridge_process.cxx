@@ -88,7 +88,7 @@ public:
   void connect();
 
   // Configuration values
-  int m_port;
+  int m_port; // base port number for connecting to other pipeline
 
   zmq::context_t m_context;
   std::string m_connect_host;
@@ -106,7 +106,7 @@ public:
   ::kwiver::vital::bounded_buffer< std::shared_ptr< std::string > > send_buffer;
   ::kwiver::vital::bounded_buffer< std::shared_ptr< std::string > > receive_buffer;
   std::condition_variable data_ready;
-  std::mutex monitor; // held if step() is waiting for work.
+  std::mutex monitor; // held if step() is working.
 
   // Thread control. Threads terminate when 'running' turns FALSE.
   std::unique_ptr< std::thread > send_thread;
@@ -115,7 +115,6 @@ public:
 }; // end priv class
 
 // ================================================================
-
 zmq_transport_bridge_process
 ::zmq_transport_bridge_process( kwiver::vital::config_block_sptr const& config )
   : process( config ),
@@ -201,22 +200,32 @@ void zmq_transport_bridge_process
   // blocking behaviour, all the work done in the supporting threads,
   // and there is not much work being done here anyway.
 
+  // If threads have been stopped, then we
+  if ( ! d->running )
+  {
+    return;
+  }
+
   lock lk(d->monitor);
+  LOG_TRACE( logger(), "step() waiting for work");
   d->data_ready.wait(lk);
+  LOG_TRACE( logger(), "step() has the lock");
 
   // Handle traffic going to remote pipeline.
 
-  // In this case, we always empty the input buffer since all inputs
+  //+ ?? In this case, we always empty the input buffer since all inputs
   // have been collected by the send thread (which is running
   // asynchronously). Normally we should abide by the one input and
   // one output per step().
   while ( ! d->send_buffer.Empty() )
   {
     auto mess = d->send_buffer.Receive();
-    // We know that the message is a pointer to a std::string send
-    // mess to the transport. Also, the datum type has already been
-    // encoded in the message.
-    LOG_TRACE( logger(), "Sending datagram of size " << mess->size() );
+    // We know that the message is a pointer to a std::string.
+    // Send mess to the transport. Also, the datum type has already
+    // been encoded in the message.
+    LOG_TRACE( logger(), "Sending datagram of size " << mess->size()
+               << "  Type: " << mess->substr(0,4) );
+
     zmq::message_t datagram(mess->size());
     memcpy((void *) datagram.data(), mess->c_str(), mess->size());
     d->m_pub_socket.send(datagram);
@@ -225,10 +234,13 @@ void zmq_transport_bridge_process
   // Handle traffic from the remote pipeline. The datum encoding is
   // still in the message.
 
-  // In this case we only push a single output per step().
-  if ( ! d->receive_buffer.Empty() )
+  //+ ?? In this case we only push a single output per step().
+  while ( ! d->receive_buffer.Empty() )
   {
     auto msg = d->receive_buffer.Receive();
+
+    LOG_TRACE( logger(), "Received datagram of size " << msg->size()
+               << "  Type: " << msg->substr(0,4) );
 
     // Retrieve the datum type form the message
     auto const type { transport_util::decode_datum_type( *msg ) };
@@ -296,7 +308,7 @@ zmq_transport_bridge_process::priv
     // Bind to the publisher socket
     std::ostringstream pub_connect_string;
     pub_connect_string << "tcp://*:" << m_port;
-    m_pub_sync_socket.setsockopt( ZMQ_LINGER, 5000 ); // wait 5 seconds
+    m_pub_socket.setsockopt( ZMQ_LINGER, 5000 ); // wait 5 seconds
     LOG_TRACE( m_logger, "PUB Connect for " << pub_connect_string.str() );
     m_pub_socket.bind( pub_connect_string.str() );
 
@@ -311,8 +323,8 @@ zmq_transport_bridge_process::priv
     m_pub_sync_socket.recv( &datagram );
     LOG_TRACE( m_logger, "SYNC received reply from subscriber.");
 
-    // Send empty message as ack
-    zmq::message_t datagram_o;
+    // Send message as ack
+    zmq::message_t datagram_o { "ACK", 3 };
     m_pub_sync_socket.send( datagram_o );
   }
 
@@ -321,17 +333,17 @@ zmq_transport_bridge_process::priv
     m_sub_socket.setsockopt(ZMQ_SUBSCRIBE,"",0);
 
     std::ostringstream sub_connect_string;
-    sub_connect_string << "tcp://" << m_connect_host << ":" << m_port + 2;
+    sub_connect_string << "tcp://" << m_connect_host << ":" << ( m_port + 2 );
     LOG_TRACE( m_logger, "SUB Connect for " << sub_connect_string.str() );
     m_sub_socket.connect( sub_connect_string.str() );
 
     std::ostringstream sync_connect_string;
-    sync_connect_string << "tcp://" << m_connect_host << ":" << ( m_port + 3);
+    sync_connect_string << "tcp://" << m_connect_host << ":" << ( m_port + 3 );
     LOG_TRACE( m_logger, "SYNC Connect for " << sync_connect_string.str() );
     m_sub_sync_socket.connect( sync_connect_string.str() );
 
-    // Send ack back to PUB process
-    zmq::message_t datagram;
+    // Send REQ to process
+    zmq::message_t datagram { "REQ", 3 };
     m_sub_sync_socket.send(datagram);
 
     zmq::message_t datagram_i;
@@ -351,6 +363,7 @@ void zmq_transport_bridge_process
 {
   LOG_DEBUG( logger(), "Starting send thread");
   do {
+    LOG_TRACE(logger(), "send_thread waiting for data");
     auto const mess_dat = grab_datum_from_port_using_trait( serialized_message );
     auto const dat_type = mess_dat->type();
 
@@ -369,10 +382,19 @@ void zmq_transport_bridge_process
       mess = std::make_shared< std::string >();
     }
 
+    LOG_TRACE( logger(), "Received message from port. Size: " << mess->size()
+               << " Type " << out_type );
+
     // Prepend datum type
     *mess = out_type + *mess;
-    d->send_buffer.Send( mess );
-    d->data_ready.notify_one();
+
+    { // coordinate with step()
+      lock lk(d->monitor);
+      LOG_TRACE(logger(), "send_thread has the lock");
+
+      d->send_buffer.Send( mess );
+      d->data_ready.notify_one();
+    }
   } while ( d->running );
 
   LOG_DEBUG( logger(), "Ending send thread");
@@ -387,12 +409,18 @@ void zmq_transport_bridge_process
   LOG_DEBUG( logger(), "Starting receive thread");
   do {
     zmq::message_t datagram;
+      LOG_TRACE(logger(), "receive_thread waiting for datagram");
     d->m_sub_socket.recv( &datagram );
     auto msg = std::make_shared< std::string >( static_cast<char *>(datagram.data()), datagram.size() );
-    LOG_TRACE( logger(), "Received datagram of size " << msg->size() );
-    d->receive_buffer.Send( msg );
+    LOG_TRACE( logger(), "Received datagram of size " << msg->size()
+               << "  Type: " << msg->substr(0,4) );
 
-    d->data_ready.notify_one();
+    { // coordinate with step()
+      lock lk(d->monitor);
+      LOG_TRACE(logger(), "receive_thread has the lock");
+      d->receive_buffer.Send( msg );
+      d->data_ready.notify_one();
+    }
   } while ( d->running );
 
   LOG_DEBUG( logger(), "Ending receive thread");

@@ -133,13 +133,6 @@ void zmq_transport_send_process
 
   auto dat_type = mess_dat->type();
 
-  // We need to handle the "complete" datum locally because we have
-  // selected "check_none" as checking_level.
-  if ( dat_type == sprokit::datum::complete )
-  {
-    mark_process_as_complete();
-  }
-
   // Encode the datum type as the first character of the message. The
   // datum type needs to be forwarded so that flow termination can be
   // signaled.
@@ -156,10 +149,19 @@ void zmq_transport_send_process
     out_mess += *mess;
   }
 
-  LOG_TRACE( logger(), "Sending datagram of size " << out_mess.size() );
+  LOG_TRACE( logger(), "Sending datagram of size: " << out_mess.size()
+             << "  Type: " << out_mess.substr(0,4) );
+
   zmq::message_t datagram(out_mess.size());
   memcpy((void *) datagram.data(), (out_mess.c_str()), out_mess.size());
   d->m_pub_socket.send(datagram);
+
+  // We need to handle the "complete" datum locally because we have
+  // selected "check_none" as checking_level.
+  if ( dat_type == sprokit::datum::complete )
+  {
+    mark_process_as_complete();
+  }
 }
 
 // ----------------------------------------------------------------
@@ -203,6 +205,7 @@ zmq_transport_send_process::priv
   // Bind to the publisher socket
   std::ostringstream pub_connect_string;
   pub_connect_string << "tcp://*:" << m_port;
+  m_pub_socket.setsockopt( ZMQ_LINGER, 5000 ); // wait 5 seconds
   LOG_TRACE( m_logger, "PUB Connect for " << pub_connect_string.str() );
   m_pub_socket.bind( pub_connect_string.str() );
 
@@ -223,8 +226,8 @@ zmq_transport_send_process::priv
     LOG_TRACE( m_logger, "SYNC Loop, received reply from subscriber "
                << subscribers << " of " << m_expected_subscribers );
 
-    // Send empty message as ack
-    zmq::message_t datagram_o;
+    // Send message as ack
+    zmq::message_t datagram_o( "ACK", 3 );
     m_sync_socket.send( datagram_o );
     ++subscribers;
   }
