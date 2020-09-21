@@ -1,32 +1,6 @@
-/*ckwg +29
- * Copyright 2020 by Kitware, Inc.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- *  * Redistributions of source code must retain the above copyright notice,
- *    this list of conditions and the following disclaimer.
- *
- *  * Redistributions in binary form must reproduce the above copyright notice,
- *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution.
- *
- *  * Neither name of Kitware, Inc. nor the names of any contributors may be used
- *    to endorse or promote products derived from this software without specific
- *    prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHORS OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
+// This file is part of KWIVER, and is distributed under the
+// OSI-approved BSD 3-Clause License. See top-level LICENSE file or
+// https://github.com/Kitware/kwiver/blob/master/LICENSE for details.
 
 #include "zmq_transport_bridge_process.h"
 #include "transport_util.h"
@@ -190,6 +164,8 @@ void zmq_transport_bridge_process
   {
     // nothing
   }
+
+  d->m_context.close();
 }
 
 // ----------------------------------------------------------------
@@ -200,20 +176,19 @@ void zmq_transport_bridge_process
   // blocking behaviour, all the work done in the supporting threads,
   // and there is not much work being done here anyway.
 
-  // If threads have been stopped, then we
-  if ( ! d->running )
+  lock lk(d->monitor);
+
+  if ( d->send_buffer.Empty() && d->receive_buffer.Empty() )
   {
-    return;
+    LOG_TRACE( logger(), "step() waiting for work");
+    d->data_ready.wait(lk);
   }
 
-  lock lk(d->monitor);
-  LOG_TRACE( logger(), "step() waiting for work");
-  d->data_ready.wait(lk);
   LOG_TRACE( logger(), "step() has the lock");
 
   // Handle traffic going to remote pipeline.
 
-  //+ ?? In this case, we always empty the input buffer since all inputs
+  // In this case, we always empty the input buffer since all inputs
   // have been collected by the send thread (which is running
   // asynchronously). Normally we should abide by the one input and
   // one output per step().
@@ -229,12 +204,10 @@ void zmq_transport_bridge_process
     zmq::message_t datagram(mess->size());
     memcpy((void *) datagram.data(), mess->c_str(), mess->size());
     d->m_pub_socket.send(datagram);
-  }
+  } // end while
 
   // Handle traffic from the remote pipeline. The datum encoding is
   // still in the message.
-
-  //+ ?? In this case we only push a single output per step().
   while ( ! d->receive_buffer.Empty() )
   {
     auto msg = d->receive_buffer.Receive();
@@ -256,6 +229,8 @@ void zmq_transport_bridge_process
 
       const sprokit::datum_t dat { sprokit::datum::complete_datum() };
       push_datum_to_port_using_trait( serialized_message, dat );
+
+      this->_finalize(); //+ test
     }
     else
     {
@@ -263,7 +238,7 @@ void zmq_transport_bridge_process
       auto out_datum = transport_util::new_datum_from_type( type, msg );
       push_datum_to_port_using_trait( serialized_message, out_datum );
     }
-  }
+  } // end while
 }
 
 // ----------------------------------------------------------------
@@ -362,7 +337,8 @@ void zmq_transport_bridge_process
 ::send_thread()
 {
   LOG_DEBUG( logger(), "Starting send thread");
-  do {
+  while ( d->running )
+  {
     LOG_TRACE(logger(), "send_thread waiting for data");
     auto const mess_dat = grab_datum_from_port_using_trait( serialized_message );
     auto const dat_type = mess_dat->type();
@@ -395,7 +371,13 @@ void zmq_transport_bridge_process
       d->send_buffer.Send( mess );
       d->data_ready.notify_one();
     }
-  } while ( d->running );
+
+    if ( dat_type == sprokit::datum::complete )
+    {
+      LOG_TRACE( logger(), "Sent complete datum" );
+      break;
+    }
+  } // end while
 
   LOG_DEBUG( logger(), "Ending send thread");
 }
@@ -407,13 +389,23 @@ void zmq_transport_bridge_process
 ::receive_thread()
 {
   LOG_DEBUG( logger(), "Starting receive thread");
-  do {
+  while ( d->running )
+  {
     zmq::message_t datagram;
-      LOG_TRACE(logger(), "receive_thread waiting for datagram");
-    d->m_sub_socket.recv( &datagram );
+    LOG_TRACE(logger(), "receive_thread waiting for datagram");
+
+    try {
+      d->m_sub_socket.recv( &datagram );
+    } catch (...)
+    {
+      //+ it is not clear that more should be done here
+      continue;
+    }
+
     auto msg = std::make_shared< std::string >( static_cast<char *>(datagram.data()), datagram.size() );
     LOG_TRACE( logger(), "Received datagram of size " << msg->size()
                << "  Type: " << msg->substr(0,4) );
+
 
     { // coordinate with step()
       lock lk(d->monitor);
@@ -421,7 +413,17 @@ void zmq_transport_bridge_process
       d->receive_buffer.Send( msg );
       d->data_ready.notify_one();
     }
-  } while ( d->running );
+
+    // Complete datum does not carry any data.
+    auto const dat_type { transport_util::decode_datum_type( *msg ) };
+    if ( dat_type == sprokit::datum::complete )
+    {
+      LOG_TRACE( logger(), "Received complete datum" );
+
+      // The remote pipeline has terminated.
+      break;
+    }
+}
 
   LOG_DEBUG( logger(), "Ending receive thread");
 }
