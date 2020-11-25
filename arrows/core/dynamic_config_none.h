@@ -30,15 +30,15 @@ public:
   /// Default constructor
   dynamic_config_none();
 
-  virtual void set_configuration( kwiver::vital::config_block_sptr config );
-  virtual bool check_configuration( kwiver::vital::config_block_sptr config ) const;
+  void set_configuration( kwiver::vital::config_block_sptr config ) override;
+  bool check_configuration( kwiver::vital::config_block_sptr config ) const override;
 
   /// Return dynamic configuration values
   /**
    * This method returns dynamic configuration values. A valid config
    * block is returned even if there are not values being returned.
    */
-  virtual kwiver::vital::config_block_sptr get_dynamic_configuration();
+  kwiver::vital::config_block_sptr get_dynamic_configuration() override;
 };
 
 } } } // end namespace

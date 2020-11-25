@@ -30,7 +30,7 @@ public:
 
   /// Return dynamic configuration values
   /**
-   * This method returns dynamic configuration values. a valid config
+   * This method returns dynamic configuration values. A valid config
    * block is returned even if there are not values being returned.
    */
   virtual config_block_sptr get_dynamic_configuration() = 0;

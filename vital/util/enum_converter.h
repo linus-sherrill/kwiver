@@ -77,7 +77,7 @@ ENUM_CONVERTER( method_converter, method_t,
 
   config->set_value("method", method_converter().to_string( d->method ),
                     "Fundamental matrix estimation method to use. "
-                    "(Note: does not include RANSAC).  Choices are: "
+                    "Choices are: "
                     + method_converter().element_name_string() );
 
   // Convert config entry from string to enum value
@@ -101,7 +101,7 @@ ENUM_CONVERTER( method_converter, method_t,
 
   // Get value from process config and convert into enum value
   std::string mode = config_value_using_trait( error_mode );
-  d->m_config_error_mode = priv::mode_converter().from_string( mode );
+  d->m_config_error_mode = mode_converter().from_string( mode );
 \endcode
  *
  *
