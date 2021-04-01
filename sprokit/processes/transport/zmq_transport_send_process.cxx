@@ -2,8 +2,8 @@
 // OSI-approved BSD 3-Clause License. See top-level LICENSE file or
 // https://github.com/Kitware/kwiver/blob/master/LICENSE for details.
 
-#include "zmq_transport_send_process.h"
 #include "transport_util.h"
+#include "zmq_transport_send_process.h"
 
 #include <kwiver_type_traits.h>
 #include <zmq.hpp>
@@ -16,11 +16,11 @@ namespace kwiver {
 create_config_trait( port, int, "5550",
                      "Port number to connect/bind to.\n\n"
                      "This will consume two ports. "
-                     "The port specified and the next one.");
+                     "The port specified and the next one." );
 
 create_config_trait( expected_subscribers, int, "1",
                      "Number of subscribers to wait for before starting to publish.\n\n"
-                     "If zero is entered, then this process will not wait for any subscribers.");
+                     "If zero is entered, then this process will not wait for any subscribers." );
 
 /**
  * \class zmq_transport_send_process
@@ -57,12 +57,12 @@ create_config_trait( expected_subscribers, int, "1",
  * connect before publication commences.
  */
 
-//----------------------------------------------------------------
+// ----------------------------------------------------------------
 // Private implementation class
 class zmq_transport_send_process::priv
 {
 public:
-  priv() ;
+  priv();
   ~priv();
 
   void connect();
@@ -71,13 +71,12 @@ public:
   int m_port;
   int m_expected_subscribers;
 
-  //+ any other connection related data goes here
+  // any other connection related data goes here
   zmq::context_t m_context;
   zmq::socket_t m_pub_socket;
   zmq::socket_t m_sync_socket;
 
   vital::logger_handle_t m_logger; // for logging in priv methods
-
 }; // end priv class
 
 // ================================================================
@@ -99,7 +98,8 @@ zmq_transport_send_process
 }
 
 // ----------------------------------------------------------------
-void zmq_transport_send_process
+void
+zmq_transport_send_process
 ::_configure()
 {
   scoped_configure_instrumentation();
@@ -109,12 +109,14 @@ void zmq_transport_send_process
   d->m_expected_subscribers = config_value_using_trait( expected_subscribers );
 
   int major, minor, patch;
-  zmq_version(&major, &minor, &patch);
-  LOG_DEBUG( logger(), "ZeroMQ Version: " << major << "." << minor << "." << patch );
+  zmq_version( &major, &minor, &patch );
+  LOG_DEBUG(
+    logger(), "ZeroMQ Version: " << major << "." << minor << "." << patch );
 }
 
 // ----------------------------------------------------------------
-void zmq_transport_send_process
+void
+zmq_transport_send_process
 ::_init()
 {
   d->connect();
@@ -124,7 +126,8 @@ void zmq_transport_send_process
 }
 
 // ----------------------------------------------------------------
-void zmq_transport_send_process
+void
+zmq_transport_send_process
 ::_step()
 {
   auto const mess_dat = grab_datum_from_port_using_trait( serialized_message );
@@ -143,29 +146,34 @@ void zmq_transport_send_process
   auto out_mess = transport_util::encode_datum_type( dat_type );
 
   // There is only data with this type of packet.
-  if ( dat_type == sprokit::datum::data )
+  if( dat_type == sprokit::datum::data )
   {
-    auto const mess = mess_dat->get_datum< serialized_message_type_trait::type >();
+    auto const mess =
+      mess_dat->get_datum< serialized_message_type_trait::type >();
     out_mess += *mess;
   }
 
-  LOG_TRACE( logger(), "Sending datagram of size: " << out_mess.size()
-             << "  Type: " << out_mess.substr(0,4) );
+  LOG_TRACE( logger(),
+             "Sending datagram of size: "       << out_mess.size()
+                                                << "  Type: " << out_mess.substr(
+                 0,
+                 4 ) );
 
-  zmq::message_t datagram(out_mess.size());
-  memcpy((void *) datagram.data(), (out_mess.c_str()), out_mess.size());
-  d->m_pub_socket.send(datagram);
+  zmq::message_t datagram( out_mess.size() );
+  memcpy( (void*) datagram.data(), ( out_mess.c_str() ), out_mess.size() );
+  d->m_pub_socket.send( datagram );
 
   // We need to handle the "complete" datum locally because we have
   // selected "check_none" as checking_level.
-  if ( dat_type == sprokit::datum::complete )
+  if( dat_type == sprokit::datum::complete )
   {
     mark_process_as_complete();
   }
 }
 
 // ----------------------------------------------------------------
-void zmq_transport_send_process
+void
+zmq_transport_send_process
 ::make_ports()
 {
   // Set up for required ports
@@ -176,7 +184,8 @@ void zmq_transport_send_process
 }
 
 // ----------------------------------------------------------------
-void zmq_transport_send_process
+void
+zmq_transport_send_process
 ::make_config()
 {
   declare_config_using_trait( port );
@@ -186,9 +195,9 @@ void zmq_transport_send_process
 // ================================================================
 zmq_transport_send_process::priv
 ::priv()
-  : m_context( 1 )
-  , m_pub_socket( m_context, ZMQ_PUB )
-  , m_sync_socket( m_context, ZMQ_REP )
+  : m_context( 1 ),
+    m_pub_socket( m_context, ZMQ_PUB ),
+    m_sync_socket( m_context, ZMQ_REP )
 {
 }
 
@@ -209,7 +218,8 @@ zmq_transport_send_process::priv
   LOG_TRACE( m_logger, "PUB Connect for " << pub_connect_string.str() );
   m_pub_socket.bind( pub_connect_string.str() );
 
-  // Wait for replies from expected number of subscribers before sending anything
+  // Wait for replies from expected number of subscribers before sending
+  // anything
   std::ostringstream sync_connect_string;
   sync_connect_string << "tcp://*:" << ( m_port + 1 );
   LOG_TRACE( m_logger, "SYNC Connect for " << sync_connect_string.str() );
@@ -218,7 +228,7 @@ zmq_transport_send_process::priv
   int subscribers = 0;
   LOG_TRACE( m_logger, "Entering Sync Loop, waiting for "
              << m_expected_subscribers << " subscribers" );
-  while ( subscribers < m_expected_subscribers )
+  while( subscribers < m_expected_subscribers )
   {
     // Receive empty message
     zmq::message_t datagram;

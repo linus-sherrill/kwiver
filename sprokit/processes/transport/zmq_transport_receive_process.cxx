@@ -2,8 +2,8 @@
 // OSI-approved BSD 3-Clause License. See top-level LICENSE file or
 // https://github.com/Kitware/kwiver/blob/master/LICENSE for details.
 
-#include "zmq_transport_receive_process.h"
 #include "transport_util.h"
+#include "zmq_transport_receive_process.h"
 
 #include <kwiver_type_traits.h>
 #include <zmq.hpp>
@@ -17,15 +17,15 @@ create_config_trait( port, int, "5550",
                      "The selected port and the next one (port+1). "
                      "If more than one published is being handled, then the next "
                      "publisher is expected to be on port+2, with the sync port "
-                     "at port+3.");
+                     "at port+3." );
 
 create_config_trait( connect_host, std::string, "localhost",
                      "Hostname (or IP address) to connect to.\n\n"
                      "This is the host name/address of the sender that we want "
-                     "receive messages from.");
+                     "receive messages from." );
 
 create_config_trait( num_publishers, int, "1",
-                     "Number of publishers to subscribe to. ");
+                     "Number of publishers to subscribe to. " );
 
 /**
  * \class zmq_transport_receive_process
@@ -66,7 +66,7 @@ create_config_trait( num_publishers, int, "1",
  * to.  May be a DNS name or an IP address.
  */
 
-//----------------------------------------------------------------
+// ----------------------------------------------------------------
 // Private implementation class
 class zmq_transport_receive_process::priv
 {
@@ -84,10 +84,9 @@ public:
   // any other connection related data goes here
   zmq::context_t m_context;
   zmq::socket_t m_sub_socket;
-  std::vector< std::shared_ptr<zmq::socket_t> > m_sync_sockets;
+  std::vector< std::shared_ptr< zmq::socket_t > > m_sync_sockets;
 
   vital::logger_handle_t m_logger; // for logging in priv methods
-
 }; // end priv class
 
 // ================================================================
@@ -108,7 +107,8 @@ zmq_transport_receive_process
 }
 
 // ----------------------------------------------------------------
-void zmq_transport_receive_process
+void
+zmq_transport_receive_process
 ::_configure()
 {
   scoped_configure_instrumentation();
@@ -119,19 +119,22 @@ void zmq_transport_receive_process
   d->m_connect_host = config_value_using_trait( connect_host );
 
   int major, minor, patch;
-  zmq_version(&major, &minor, &patch);
-  LOG_DEBUG( logger(), "ZeroMQ Version: " << major << "." << minor << "." << patch );
+  zmq_version( &major, &minor, &patch );
+  LOG_DEBUG(
+    logger(), "ZeroMQ Version: " << major << "." << minor << "." << patch );
 }
 
 // ----------------------------------------------------------------
-void zmq_transport_receive_process
+void
+zmq_transport_receive_process
 ::_init()
 {
   d->connect();
 }
 
 // ----------------------------------------------------------------
-void zmq_transport_receive_process
+void
+zmq_transport_receive_process
 ::_step()
 {
   LOG_TRACE( logger(), "Waiting for datagram..." );
@@ -140,33 +143,40 @@ void zmq_transport_receive_process
   d->m_sub_socket.recv( &datagram );
 
   // We know that the message is a pointer to a std::string
-  auto msg = std::make_shared< std::string >(static_cast<char *>(datagram.data()), datagram.size());
+  auto msg =
+    std::make_shared< std::string >(
+       static_cast< char* >( datagram.data() ), datagram.size() );
 
-  LOG_TRACE( logger(), "Received datagram of size " << datagram.size()
-             << "  Type: " << msg->substr(0,4) );
+  LOG_TRACE( logger(),
+             "Received datagram of size "       << datagram.size()
+                                                << "  Type: " << msg->substr(
+               0, 4 ) );
 
   // Retrieve the datum type form the message
   auto const type { transport_util::decode_datum_type( *msg ) };
 
   // Complete datum does not carry any data.
-  if ( type == sprokit::datum::complete )
+  if( type == sprokit::datum::complete )
   {
     LOG_TRACE( logger(), "Received complete datum" );
 
     mark_process_as_complete();
+
     const sprokit::datum_t dat { sprokit::datum::complete_datum() };
     push_datum_to_port_using_trait( serialized_message, dat );
   }
   else
   {
     *msg = transport_util::strip_datum_type( *msg );
+
     auto out_datum = transport_util::new_datum_from_type( type, msg );
     push_datum_to_port_using_trait( serialized_message, out_datum );
   }
 }
 
 // ----------------------------------------------------------------
-void zmq_transport_receive_process
+void
+zmq_transport_receive_process
 ::make_ports()
 {
   // Set up for required ports
@@ -177,7 +187,8 @@ void zmq_transport_receive_process
 }
 
 // ----------------------------------------------------------------
-void zmq_transport_receive_process
+void
+zmq_transport_receive_process
 ::make_config()
 {
   declare_config_using_trait( port );
@@ -189,7 +200,7 @@ void zmq_transport_receive_process
 zmq_transport_receive_process::priv
 ::priv()
   : m_context( 1 )
-  , m_sub_socket( m_context, ZMQ_SUB )
+    , m_sub_socket( m_context, ZMQ_SUB )
 {
 }
 
@@ -203,10 +214,10 @@ zmq_transport_receive_process::priv
 
   // We start with our base port.  Even ports are the pub/sub socket
   // Odd ports (pub/sub + 1) are the sync sockets
-  for ( int i = 0; i < m_num_publishers * 2; i += 2 )
+  for( int i = 0; i < m_num_publishers * 2; i += 2 )
   {
     auto sync_socket = std::make_shared< zmq::socket_t >( m_context, ZMQ_REQ );
-    m_sync_sockets.push_back(sync_socket);
+    m_sync_sockets.push_back( sync_socket );
 
     // Note that a ZMQ socket can connect to multiples.
     std::ostringstream sub_connect_string;
@@ -215,18 +226,23 @@ zmq_transport_receive_process::priv
     m_sub_socket.connect( sub_connect_string.str() );
 
     std::ostringstream sync_connect_string;
-    sync_connect_string << "tcp://" << m_connect_host << ":" << ( m_port + i + 1);
+    sync_connect_string << "tcp://" << m_connect_host << ":" <<
+      ( m_port + i + 1 );
     LOG_TRACE( m_logger, "SYNC Connect for " << sync_connect_string.str() );
     sync_socket->connect( sync_connect_string.str() );
 
     // Send ack back to PUB process
     zmq::message_t datagram( "REQ", 3 );
-    sync_socket->send(datagram);
+    sync_socket->send( datagram );
 
     zmq::message_t datagram_i;
-    LOG_TRACE( m_logger, "Waiting for SYNC reply, pub: " << i << " at " << ( m_port + i + 1 ) );
-    sync_socket->recv(&datagram_i);
-    LOG_TRACE( m_logger, "SYNC reply received, pub: " << i << " at " <<  ( m_port + i + 1 ) );
+    LOG_TRACE( m_logger,
+               "Waiting for SYNC reply, pub: " << i << " at " <<
+      ( m_port + i + 1 ) );
+    sync_socket->recv( &datagram_i );
+    LOG_TRACE( m_logger,
+               "SYNC reply received, pub: " << i << " at " <<
+      ( m_port + i + 1 ) );
   } // end for
 }
 

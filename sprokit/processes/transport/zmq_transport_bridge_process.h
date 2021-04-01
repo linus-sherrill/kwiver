@@ -12,6 +12,7 @@
 namespace kwiver {
 
 // ----------------------------------------------------------------
+
 /*
  * zmq_transport_send_process
  *
@@ -25,7 +26,7 @@ public:
                "Send and receive serialized buffers to/from ZMQ transport.\n\n"
                "This process acts as a bridge to another pipeline. "
                "The original application is to bridge to a pipeline "
-               "running in a docker container.")
+               "running in a docker container." )
 
   zmq_transport_bridge_process( kwiver::vital::config_block_sptr const& config );
   virtual ~zmq_transport_bridge_process();
@@ -44,7 +45,8 @@ private:
   void receive_thread();
 
   class priv;
-  const std::unique_ptr<priv> d;
+
+  const std::unique_ptr< priv > d;
 }; // end class zmq_transport_bridge_process
 
 }  // end namespace

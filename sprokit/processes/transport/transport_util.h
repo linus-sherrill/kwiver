@@ -7,8 +7,8 @@
 
 #include "kwiver_processes_transport_export.h"
 
-#include <sprokit/pipeline/types.h>
 #include <sprokit/pipeline/datum.h>
+#include <sprokit/pipeline/types.h>
 
 namespace kwiver {
 
@@ -30,7 +30,7 @@ public:
  *
  * \returns Datum type is encoded as a string.
  */
-static std::string encode_datum_type( sprokit::datum::type_t dat );
+  static std::string encode_datum_type( sprokit::datum::type_t dat );
 
 /**
  * \brief Convert datum type string to code number.
@@ -42,8 +42,7 @@ static std::string encode_datum_type( sprokit::datum::type_t dat );
  *
  * \returns Datum type enumeration.
  */
-static sprokit::datum::type_t decode_datum_type( std::string const& dat );
-
+  static sprokit::datum::type_t decode_datum_type( std::string const& dat );
 
 /**
  * \brief Remove datum type encoding from string.
@@ -54,7 +53,7 @@ static sprokit::datum::type_t decode_datum_type( std::string const& dat );
  *
  * \returns Message string with the encoded datum type removed.
  */
-static std::string strip_datum_type( std::string const& msg );
+  static std::string strip_datum_type( std::string const& msg );
 
 /**
  * \brief Create datum of correct type.
@@ -69,20 +68,20 @@ static std::string strip_datum_type( std::string const& msg );
  *
  * \return sprokit::datum of the specified type.
  */
-template< typename T>
-static sprokit::datum_t new_datum_from_type( sprokit::datum::type_t type, T const& dat );
+  template < typename T >
+  static sprokit::datum_t new_datum_from_type( sprokit::datum::type_t type,
+                                               T const& dat );
 
 private:
 // Define the in-band (string) representation for the datum types.
-static std::string const datum_type_data;
-static std::string const datum_type_empty;
-static std::string const datum_type_error;
-static std::string const datum_type_invalid;
-static std::string const datum_type_flush;
-static std::string const datum_type_complete;
-
+  static std::string const datum_type_data;
+  static std::string const datum_type_empty;
+  static std::string const datum_type_error;
+  static std::string const datum_type_invalid;
+  static std::string const datum_type_flush;
+  static std::string const datum_type_complete;
 };
 
-}
+} // namespace kwiver
 
 #endif // KWIVER_TRANSPORT_UTIL_H
